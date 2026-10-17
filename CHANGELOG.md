@@ -1,18 +1,19 @@
 # Changelog
 
+## 0.2 - Draft
+
+- Recast RDO as a distributed M3 over Reticulum; added ontology/rdo-core.ttl.
+- Defined rdo:Object, rdo:Class, rdo:Property and rdo:Relationship, with the latter three inheriting Object.
+- Made each Property and Relationship instance a separate owned/addressable object instead of an embedded field or edge.
+- Distinguished one owning Twin Identity from multiple Reticulum Object Destinations.
+- Introduced a shared-Identity Destination naming profile with signed aspect-token recovery; Python/Rust interoperability testing is still required.
+- Kept one Destination hash as the sole canonical RDO ID and retained single-owner mutation.
+- Separated structural correctness from epistemic truth assessment.
+- Reclassified RPP as an optional M2 ontology atop RDO; bulk bytes remain on RNS Resources.
+- Preserved nonowner request routing, duplicate handling, stale-version protection and offline behavior.
+
+Draft 0.2 changes the proposed Reticulum binding; it does not claim compatibility with the untagged Draft 0.1 profile.
+
 ## 0.1 - Draft
 
-Initial publication of the protocol specification.
-
-Draft refinements:
-
-- made the Reticulum `SINGLE` Destination hash the sole canonical RDO identifier;
-- fixed the Draft 0.1 logical Object Destination name to `rdo.object` with a distinct Object Identity per RDO object;
-- defined exactly one owning twin per RDO object;
-- restricted authoritative changes to the owning twin;
-- required federated twins to resolve and address objects through Reticulum and submit operations to the owner;
-- removed the need for an IRI-to-owner or object-to-host directory as the primary federation mechanism;
-- clarified that Dafrion/RDF IRIs are semantic or external identifiers, not a second RDO identity;
-- explicitly deferred multi-writer state, distributed consensus, CRDT ownership, automatic ownership transfer, and cross-owner atomic transactions;
-- added stale-request and duplicate-request protections for remote state-changing operations;
-- clarified disconnected behavior: foreign state may be cached, but foreign authoritative writes wait for the owner.
+Initial published draft. Later refined single-owner rules, Reticulum destination-hash identity, remote requests and disconnected behavior. The original draft used a distinct Reticulum Identity per object and fixed destination name rdo.object.
