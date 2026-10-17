@@ -1,23 +1,21 @@
 # Reticulum Distributed Objects (RDO)
 
-Reticulum Distributed Objects defines a protocol model for addressable distributed objects over the Reticulum Network Stack.
+**Status: Draft 0.2 — distributed meta-metamodel (M3).**
 
-Draft 0.1 uses a deliberately simple ownership rule:
+RDO defines a small distributed ontology over the Reticulum Network Stack. Its foundational classes are **Object**, **Class**, **Property** and **Relationship**. Every independently published instance of these classes has its own Reticulum SINGLE Destination, one canonical identifier (the Destination hash), and one owning twin.
 
-- every RDO object has exactly one canonical identifier: its Reticulum `SINGLE` Destination hash;
-- every RDO object has exactly one owning twin;
-- only the owning twin may commit authoritative changes;
-- federated twins address the object's Reticulum Destination and submit operation requests to the owner;
-- application identifiers such as Dafrion/RDF IRIs may be preserved as semantic or external identifiers, but they are not a second RDO identity and are not used as the primary routing mechanism.
+- Properties and relationships are full, separately addressable RDO objects, never embedded authoritative fields or edges.
+- A twin's Reticulum Identity can own multiple object Destinations. The Draft 0.2 shared-Identity address binding defines signed derivation metadata, pending Python/Rust interoperability testing.
+- A Relationship has explicit source, destination and semantic type, even when those endpoint objects belong to other twins.
+- Several twins can independently describe the same external fact; truth and evidence assessment belong to an optional **epistemic layer**, not RDO.
+- A foreign twin can reference, cache and request operations but cannot commit changes to objects it does not own.
+- RDO provides the M3 type/operation basis for M2 ontologies such as **RPP**, **DAF** and **R3AKT**.
+- Bulk content transfer uses Reticulum Resources. RDO does not reinvent file transfer.
 
-This keeps location and cryptographic identity inside Reticulum and avoids requiring a separate object-to-owner or IRI-to-host directory.
+Read the [normative specification](SPECIFICATION.md) and the [Turtle M3 vocabulary](ontology/rdo-core.ttl).
 
-Status: Draft, version 0.1.
+[RPP](https://github.com/FreeTAKTeam/rpp-spec) is an M2 package/file ontology defined on top of RDO, with a Reticulum Resource-based binary transfer mechanism. RDO itself does not depend on RPP.
 
-Read the [normative specification](SPECIFICATION.md). This repository contains the protocol specification, not a particular implementation or runtime library.
+This repository defines the draft specification and vocabulary, not a production implementation. A compact operation wire profile and shared-Identity address interoperability tests remain open.
 
-Draft 0.1 intentionally excludes multi-writer authoritative state, distributed consensus, automatic ownership transfer, CRDT-based ownership, and atomic transactions spanning several owning twins. These may be considered after the single-owner model has been implemented and tested.
-
-RDO and [RPP](https://github.com/FreeTAKTeam/rpp-spec) are sibling protocols. RDO MAY reference RPP for large external resources, but neither protocol requires the other.
-
-Proposed changes are documented through the process described in [proposals/](proposals/).
+See [proposals/](proposals/) for the proposal process.
