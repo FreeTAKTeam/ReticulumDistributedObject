@@ -6,6 +6,7 @@
 # These IRIs name vocabulary terms, not network-routable RDO instance IDs.
 # Each independently published instance has one separate Reticulum SINGLE
 # Destination hash as canonical RDO ID.
+# Domain descriptions are separately addressable rdo:Property instances.
 # RDF triples below describe/query the model; they are not replacements
 # for separately addressable Property or Relationship instances.
 
@@ -54,7 +55,3 @@ rdo:semanticType a rdf:Property ;
 rdo:objectVersion a rdf:Property ;
     rdfs:domain rdo:Object ;
     rdfs:comment "Owner-issued state revision, distinct from the immutable RDO Destination identity."@en .
-
-rdo:description a rdf:Property ;
-    rdfs:domain rdo:Object ;
-    rdfs:comment "Optional human-readable description of the independent RDO record."@en .
