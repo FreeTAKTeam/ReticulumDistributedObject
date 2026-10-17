@@ -3,312 +3,141 @@
 Protocol: Reticulum Distributed Objects  
 Acronym: RDO  
 Status: Draft  
-Version: 0.1  
+Version: 0.2-draft  
 Transport: Reticulum Network Stack
 
 ## 1. Status of This Document
 
-This document is the normative Draft 0.1 specification for Reticulum Distributed Objects (RDO).
+Normative **Draft 0.2** supersedes the untagged Draft 0.1 design. RDO is a distributed meta-metamodel (M3) based on Reticulum SINGLE Destinations. This draft remains subject to Python/Rust address-binding and wire interoperability tests.
 
-Draft 0.1 deliberately uses a constrained ownership model. Every RDO object has one Reticulum Destination as its canonical identifier and one owning twin. Only the owning twin determines and commits authoritative changes to that object. Multi-writer ownership, distributed consensus, automatic ownership transfer, and cross-owner transactions are outside Draft 0.1.
+Capitalized MUST, MUST NOT, SHOULD, SHOULD NOT and MAY follow RFC 2119 and RFC 8174.
 
-The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, and **OPTIONAL** in this document are to be interpreted as described in RFC 2119 and RFC 8174 when, and only when, they appear in all capitals.
+## 2. Purpose and Modeling Levels
 
-Text marked as **Non-normative** explains intent or gives implementation guidance. It does not add protocol requirements.
+RDO is a minimal, application-independent distributed M3. It defines Object, Class, Property, Relationship, types, identity, ownership and object operations. M2 ontologies such as RPP, DAF and R3AKT specialize these constructs. M1 consists of particular packages, applications, devices, properties and relationships; M0 denotes the external subjects they describe.
 
-## 2. Purpose and Scope
+Every addressable RDO instance has exactly one canonical identifier: its Reticulum SINGLE Destination hash. Exactly one owning twin may commit changes. RDO does not decide factual truth, perform file transfer itself or require any M2 ontology.
 
-RDO defines a protocol model for addressable distributed objects over the Reticulum Network Stack.
+## 3. Goals and Exclusions
 
-An RDO object is simultaneously:
+Draft 0.2 MUST provide:
 
-- a logical distributed object;
-- an addressable Reticulum Destination;
-- a unit of ownership and authorization;
-- a target for read and operation requests.
+1. A minimal self-describing M3: rdo:Object, rdo:Class, rdo:Property and rdo:Relationship.
+2. Independent, first-class Property and Relationship objects with their own Destinations, types, versions and owners, not embedded authoritative attributes or edges.
+3. Exactly one owning twin per object. A twin Reticulum Identity is distinct from the many object Destinations it may control.
+4. Reticulum-native hash addressing, owner-authorized operations and safe retries.
+5. Independent potentially incompatible descriptions of an external entity or relationship, without implicit reconciliation.
+6. M2 ontologies without embedding domain rules in the RDO kernel.
+7. Separation of structural validity from epistemic truth.
+8. Reticulum Resources for large bytes, without an RDO object per transfer chunk.
 
-RDO is intended for federated and intermittently connected systems in which objects may be referenced and cached by many participants, while exactly one owning twin remains responsible for determining authoritative changes to each object.
-
-A federated twin that needs an authoritative operation on a foreign object MUST address the object's Reticulum Destination and submit the operation to its owner. It MUST NOT independently commit a competing authoritative state for that RDO object.
-
-RDO is application-neutral. Dafrion is an intended reference consumer, but RDO MUST remain independent of any enterprise-architecture vocabulary, database, programming language, user interface, or simulation engine.
-
-## 3. Design Principles and Non-Goals
-
-### 3.1 Design principles
-
-Draft 0.1 follows these principles:
-
-1. **Destination-native identity.** The canonical identifier of an RDO object is its Reticulum Destination hash.
-2. **One RDO identifier.** Application identifiers, including RDF IRIs, MAY be retained as aliases or external identifiers, but MUST NOT become a second authoritative RDO identity.
-3. **Single ownership.** Every RDO object has exactly one owning twin.
-4. **Owner-controlled change.** Only the owning twin may determine and commit authoritative changes to the object.
-5. **Reticulum-native resolution.** Location and cryptographic identity are resolved through Reticulum. RDO MUST NOT require an IRI-to-owner or object-to-host directory as its primary resolution mechanism.
-6. **Read-only federation of foreign state.** A non-owning twin MAY cache, query, reference, or project foreign state, but MUST submit authoritative operations to the owner.
-7. **Safe operation requests.** Requests MUST be attributable, replay-safe for their declared semantics, and able to detect stale preconditions when a caller supplies them.
-8. **Evidence remains distinguishable from accepted state.** Sources may disagree; the owner decides how its application resolves those inputs.
-9. **Relations remain explicit.** Applications MAY represent relationships as independently governed RDO objects when relationship identity, properties, or provenance are required.
-10. **Projection is not mutation.** Plans, forecasts, scenarios, and simulations do not change authoritative object state unless the owner accepts them through an operation.
-11. **Large content stays outside the object protocol.** RDO MAY reference RPP or another content mechanism for large binary artifacts.
-
-### 3.2 Non-goals for Draft 0.1
-
-Draft 0.1 does not define:
-
-- multi-writer authoritative objects;
-- distributed consensus between owners;
-- CRDT-based authoritative state;
-- automatic conflict merging between competing writers;
-- automatic object-ownership transfer;
-- automatic failover that transfers ownership to a replica;
-- atomic transactions spanning several owners;
-- a global naming service;
-- an IRI-to-owner routing registry;
-- a universal truth, confidence, or source-fusion algorithm;
-- a particular database or persistence technology;
-- a package or bulk-resource transfer protocol.
-
-These capabilities MAY be considered by later specifications or extensions after the single-owner model has been implemented and tested.
+Out of scope: distributed consensus, multi-writer merges, CRDT authority, automatic ownership transfer, atomic cross-twin transactions, global host directories, a general OWL reasoner, mandatory RDF storage and universal evidence/confidence algorithms.
 
 ## 4. Terminology
 
-**RDO object**: A distributed logical object identified and addressed by one canonical Reticulum Destination hash.
+**RDO ID:** The Reticulum SINGLE Destination hash, represented as 16 bytes or an equivalent hex/IRI rendering.
 
-**RDO Identifier (RDO ID)**: The Reticulum Destination hash of an RDO object. The RDO ID is the object's canonical protocol identity and network address.
+**Object:** A separately addressed, owned, typed and versioned RDO record.
 
-**Object Destination**: The Reticulum `SINGLE` Destination representing one RDO object.
+**Class:** An Object defining a reusable type.
 
-**Object Identity**: The Reticulum Identity used to construct and control an Object Destination.
+**Property:** An Object with a source Object, property type and a typed literal or object reference as its value.
 
-**Owning twin**: The twin that holds the private cryptographic material for an object's Object Identity and is responsible for authoritative operations on that object.
+**Relationship:** An Object with a source Object, destination Object and relationship type.
 
-**Federated twin**: A twin that references, reads, caches, observes, or requests operations on objects owned by another twin.
+**Twin Identity:** The persistent cryptographic Reticulum Identity controlled by one twin; it can derive multiple Object Destinations.
 
-**Replica**: A retained copy of owner-issued information about an RDO object. A replica is not an owner and does not receive ownership merely by possessing data.
+**Object Destination:** One independently addressed Reticulum SINGLE endpoint, identifying precisely one RDO record.
 
-**Operation Request**: An authenticated request submitted to an Object Destination asking the owner to perform an operation.
+**Owning twin:** The sole authority allowed to commit changes to an Object it owns.
 
-**Operation Result**: The owner's response to an Operation Request, including its status and, when applicable, the resulting object version or returned value.
+**M2 ontology:** A domain vocabulary defining specialized Classes, Properties and Relationships, such as RPP or DAF.
 
-**Object Version**: An owner-issued value that identifies a committed state of an RDO object. The exact representation is defined by the application binding or wire profile.
+**Object Version:** An owner-issued revision marker, distinct from RDO ID.
 
-**Assertion**: A separately attributable statement or observation supplied as evidence about an RDO object or another subject.
+**Operation Request/Result:** An authenticated request addressed to an Object Destination and the owner's recorded outcome.
 
-**Current Resolution**: The authoritative state currently issued by the owning twin for an RDO object after applying its application rules to accepted information.
+**Epistemic assessment:** An evidence-based evaluation of claims, made outside RDO.
 
-**Projection**: A possible, planned, forecast, hypothetical, counterfactual, or simulated state that has not been committed as authoritative object state.
+**Replica:** A non-owning cached copy of an RDO record.
 
-**External identifier**: A non-RDO identifier associated with an object, such as an imported database key, RDF IRI, serial number, asset identifier, or application-specific URI.
+**RPP digest:** A content-derived identifier of an immutable file/package revision, not an RDO ID.
 
-## 5. Core Ownership Model
+## 5. Ownership
 
-### 5.1 Exactly one owner
+Every Object, Property, Relationship and published Class definition MUST have exactly one owning twin. A twin may own thousands of independent Reticulum Destinations using a shared persistent Twin Identity and distinct Destination names.
 
-Every RDO object MUST have exactly one owning twin.
+Only an object's owner can commit a new authoritative Object Version or perform an operation that changes it. Nonowners may create their own descriptions or send operation requests. The owner of a Relationship need not own its source or destination; creating a relationship MUST NOT change either endpoint.
 
-For Draft 0.1, ownership is established by control of the private Reticulum Identity material used by the object's Object Destination. A non-owning twin MUST NOT possess the private object identity merely to provide a replica.
+Replicas MUST NOT receive private Twin Identity keys during normal replication. Controlled migration of an Identity, Destination derivation data and state to another host MAY preserve the same addresses; automatic ownership transfer and competing active owners remain excluded.
 
-The owning twin MAY host many RDO objects and therefore MAY control many Object Identities and Object Destinations.
+## 6. Reticulum Identity, Destinations and Resolution
 
-### 5.2 Owner authority
+### 6.1 Canonical ID
 
-Only the owning twin MAY commit a new authoritative state, withdraw authoritative state, or execute an application operation that changes the object.
+The Destination hash is the sole canonical RDO ID. An external IRI, UUID, package digest, Object Version or host address MUST NOT replace it.
 
-A remote participant MAY provide evidence, observations, proposals, commands, or requested changes. These inputs become authoritative only if the owning twin accepts them according to its application rules.
+### 6.2 Shared-Identity profile
 
-Ownership establishes responsibility for the RDO object's accepted state. It does not establish that every claim made by the owner is objectively true.
+The proposed Draft 0.2 naming convention is:
 
-### 5.3 Ownership transfer
+~~~text
+Reticulum type:  SINGLE
+App:             rdo
+Aspects:         object.<token>
+Identity:        owning twin's Reticulum Identity
+RDO ID:          RNS.Destination.hash(twin_identity, "rdo", "object", token)
+~~~
 
-Automatic ownership transfer is outside Draft 0.1.
+The token SHOULD be an immutable, randomly assigned 16-byte value rendered as 32 lowercase hex characters. It MUST be unique for Destinations under that Identity. It is *Destination derivation material*, not a competing object ID.
 
-An implementation MAY support administrative migration by explicitly moving the private Object Identity and its state to another host under controlled procedures, provided the canonical RDO ID remains unchanged. Such migration is an operational deployment procedure, not a federated consensus mechanism.
+### 6.3 Hash-only resolution
 
-## 6. Destination-Native Object Identity
+RNS path requests resolve a Destination hash and signed public Identity, but its hash alone does not expose arbitrary Destination aspects. Therefore, each Object Destination MUST expose its immutable token and profile version in signed RNS announce/path-response application data. A client supplied only the RDO ID MUST verify the announce, retrieve the public Identity and token, recompute the Destination hash with the fixed app/aspects, and refuse any mismatch before addressing the object. Verified token/Identity bindings MAY be cached.
 
-### 6.1 The RDO ID
+No IRI-to-host or object-to-owner directory is required. Announce application data MUST NOT contain a public semantic object catalog. Deployments SHOULD prefer on-demand paths over indiscriminate announces.
 
-The canonical RDO Identifier MUST be the Reticulum Destination hash of the Object Destination.
+### 6.4 Profile verification
 
-Conceptually:
+The prior Draft 0.1 profile used one Identity per object with a fixed name rdo.object. That is not automatically compatible with this shared-Identity binding. The new binding MUST be validated against Python RNS and LXMF-rs/RNS-rs before claiming network interoperability.
 
-```text
-RDO ID = Reticulum Object Destination hash
-```
+## 7. RDF Identity and Vocabulary
 
-There MUST NOT be a separate mandatory UUID, application URI, database key, or owner-directory key used as the protocol identity of the same RDO object.
+The bootstrap M3 is defined by ontology/rdo-core.ttl. Its stable ontology IRIs denote language terms; they are not an alternative to Destination hash identities for instantiated RDO objects.
 
-A textual hexadecimal representation of the Destination hash is only a representation of the same RDO ID, not another identifier.
+An RDF adapter MAY render the same RDO ID as rdo:<destination-hash-hex>. Imported Dafrion or Sparx instance IRIs MAY be retained as attributed external aliases and MUST NOT silently imply object equivalence or another network address.
 
-### 6.2 Object Destination construction
+RDF triples MAY provide a query projection, but MUST NOT replace their independently owned Property and Relationship records. Domain ontology class and predicate IRIs, including DAF vocabulary terms, may remain unchanged.
 
-The Draft 0.1 Reticulum binding uses:
+## 8. Object State and Epistemic Separation
 
-```text
-Destination type: SINGLE
-Application name: rdo
-Aspect: object
-Identity: unique Object Identity for the RDO object
-```
+RDO validates structural type and reference rules, Destination identity, owner authority and state revision. It MUST NOT decide whether a Property or Relationship is factually true, whether competing descriptions denote the same real-world entity, or how persuasive their evidence is.
 
-A conforming Draft 0.1 Object Destination therefore uses the fixed logical destination name:
+Independent twins MAY publish conflicting Property and Relationship objects. RDO MUST preserve their separate Destinations and owners; any belief, evidence fusion, equivalence or assessment belongs to the optional epistemic/domain layer.
 
-```text
-rdo.object
-```
+A successful evidence submission MUST NOT be interpreted as acceptance of the claimed fact or as a change to unrelated domain objects. Projections and plans remain separate from accepted state.
 
-with an Object Identity unique to that RDO object.
+## 9. Distributed M3 Ontology
 
-Using a fixed application name and aspect allows a peer that knows only the RDO ID to request a Reticulum path, recover the destination's public identity through normal Reticulum mechanisms, and reconstruct the outbound `rdo.object` Destination without requiring a second object-specific routing name.
+### 9.1 Core classes
 
-Object-specific derivation data that is not the Reticulum Identity MUST NOT be required as an additional federation identifier in Draft 0.1.
+rdo:Object is the base. rdo:Class, rdo:Property and rdo:Relationship MUST inherit from rdo:Object. These four bootstrap terms are locally known; RDO MUST NOT require RPP or a network fetch to interpret its own M3. An independently published M2 type definition is a first-class Class object with one Destination and owner.
 
-### 6.3 Stability
+Each instance MUST identify a type. M2 ontologies may define subclasses and type restrictions without a mandatory general reasoning engine.
 
-An RDO ID MUST remain stable for the lifetime of the object.
+### 9.2 Property
 
-Changing object name, properties, relationships, application state, hosting interface, IP address, Reticulum path, or physical node MUST NOT change the RDO ID.
+An rdo:Property instance MUST be a separate RDO Object with its own Destination and owner. It MUST identify source (RDO ID), property type and one typed literal or RDO Object reference as value. Description and provenance are metadata of that Property object. The source Object does not contain the Property; a local index may expose it as though attached without changing authority.
 
-Loss or replacement of the private Object Identity would produce a different Reticulum Destination and therefore a different RDO object identity. Implementations MUST persist Object Identities accordingly.
+### 9.3 Relationship
 
-### 6.4 Reticulum is the resolution mechanism
+An rdo:Relationship instance MUST be a separate RDO Object with its own Destination and owner. It MUST identify source RDO ID, destination RDO ID and relationship type. Additional relationship attributes are separately addressed rdo:Property instances whose source is this Relationship object.
 
-A participant that holds an RDO ID MUST use Reticulum path and destination resolution to reach the object.
+The source and destination may have distinct owners. The Relationship owner need not own either. Multiple twins may independently describe the same association (including reversed endpoints). RDO MUST NOT conflate or overwrite them.
 
-RDO MUST NOT require the following sequence as its primary routing mechanism:
+### 9.4 M2 specialization
 
-```text
-RDO ID -> application directory -> owner host -> network address
-```
-
-The required model is:
-
-```text
-RDO ID / Destination hash
-        |
-        v
-Reticulum path discovery
-        |
-        v
-Object Destination
-        |
-        v
-Owning twin
-```
-
-An implementation MAY cache Reticulum path knowledge according to RNS behavior. Such cache is not an RDO naming directory.
-
-### 6.5 Announces
-
-An Object Destination MAY announce when appropriate for the deployment. Draft 0.1 does not require periodic announces for every object.
-
-Deployments with many objects SHOULD avoid unnecessary announce traffic and SHOULD prefer Reticulum's normal on-demand path discovery and path-response behavior where practical.
-
-Announce application data MUST NOT be required to carry a second RDO identifier.
-
-## 7. Application Identifiers and Dafrion IRIs
-
-### 7.1 External identifiers
-
-An RDO object MAY carry any number of external identifiers. Each external identifier SHOULD include enough namespace information to interpret it correctly.
-
-Examples include:
-
-- a Dafrion or DAF IRI;
-- a CMDB identifier;
-- a device serial number;
-- an imported Sparx identifier;
-- a source-system URL.
-
-External identifiers MUST NOT replace the RDO ID and MUST NOT be required to locate the owning twin.
-
-### 7.2 One identity, several representations
-
-Applications MAY render the RDO ID in application-compatible forms. For example, an RDF adapter MAY expose a deterministic IRI form such as:
-
-```text
-rdo:<destination-hash-hex>
-```
-
-This notation is a serialization of the same RDO ID. It MUST NOT introduce another resolution system.
-
-An imported Dafrion IRI MAY be retained as an alias or external identifier attached to the RDO object. The imported IRI MAY remain important semantic data, but network federation MUST use the RDO ID.
-
-### 7.3 Vocabulary IRIs
-
-RDO object identity MUST NOT be confused with semantic vocabulary identity.
-
-DAF class IRIs, property IRIs, ontology terms, schema identifiers, and other semantic-definition IRIs MAY remain unchanged. The single-ID rule applies to distributed RDO object instances, not to the vocabularies used to describe them.
-
-## 8. Object State and Evidence
-
-### 8.1 Authoritative state
-
-The owning twin maintains the Current Resolution for its object.
-
-The exact internal representation is application-specific. An owner MAY use mutable records, immutable revisions, RDF graphs, event sourcing, assertions, relational storage, or another persistence mechanism.
-
-RDO does not require every implementation to adopt the same internal state model.
-
-### 8.2 Assertions and observations
-
-Applications MAY preserve source assertions and observations separately from Current Resolution.
-
-When several sources describe the same object differently, RDO does not require a distributed agreement algorithm. The owning twin determines how those inputs affect the Current Resolution.
-
-A source assertion SHOULD preserve, when applicable:
-
-- source identity;
-- observation or occurrence time;
-- receipt time;
-- asserted value or relation;
-- confidence or qualification supplied by that source;
-- supporting reference.
-
-A confidence value MUST NOT be interpreted as owner acceptance unless the owning application's policy explicitly defines that meaning.
-
-### 8.3 Foreign observations
-
-A federated twin that observes information about a foreign object MAY submit that observation to the owner through an Operation Request.
-
-The owner MAY:
-
-- accept it as evidence;
-- reject it;
-- retain it without changing Current Resolution;
-- require validation or human approval;
-- derive a new Current Resolution.
-
-The remote observer MUST NOT change the authoritative foreign object merely because it generated the observation.
-
-### 8.4 Same real-world subject, different RDO objects
-
-Two owners MAY independently create two RDO objects that later appear to describe the same real-world subject. They remain distinct RDO objects because their RDO IDs differ.
-
-Applications MAY record an equivalence or correlation between them. Such a correlation MUST NOT merge their Reticulum identities or transfer ownership.
-
-Entity-resolution algorithms are outside Draft 0.1.
-
-## 9. Relations
-
-A relation between objects MAY be represented as application data or as an independently addressable RDO object.
-
-A relation SHOULD be represented as its own RDO object when it requires independent:
-
-- identity;
-- ownership;
-- properties;
-- provenance;
-- lifecycle;
-- authorization.
-
-If represented as an RDO object, the relation follows the same single-ID and single-owner rules as every other RDO object.
-
-A relationship connecting objects owned by different twins does not change ownership of either endpoint.
-
-Creating or modifying a relation MUST NOT implicitly mutate both endpoint objects unless each required mutation is separately submitted to and accepted by its owner.
-
-Atomic cross-owner relationship transactions are outside Draft 0.1.
+M2 ontologies define specialized types, permitted values, relation semantics and domain operations. RDO M3 MUST NOT contain RPP, DAF or R3AKT-specific types or decide which statements are epistemically valid.
 
 ## 10. Operation Model
 
@@ -505,135 +334,37 @@ Simulation or projection output MUST NOT become authoritative object state merel
 
 To change a foreign object based on a projection, the application MUST submit an Operation Request to that object's owner. The owner then applies its normal validation and authorization process.
 
-## 15. External Resources and Relationship to RPP
+## 15. RPP as M2, RNS Resources for Bytes
 
-Large binary content, snapshots, datasets, repositories, documents, models, images, or other external resources SHOULD normally be referenced rather than embedded directly in RDO state.
+**RPP is an M2 ontology on RDO M3**, not a sibling ontology. Its Package, File and Manifest are specialized RDO Objects; ContentHash, MediaType and Size are Property types; Contains and Supersedes are Relationship types.
 
-RDO and RPP are sibling protocols:
+RPP control operations use RDO object Destinations and owner authorization. Its binary transfer implementation uses Reticulum Resources for manifests and file/chunk bytes, without requiring each chunk, acknowledgement or transfer window to be an RDO object.
 
-```text
-Reticulum Network Stack
-|
-+-- RDO  -> distributed object identity and operations
-|
-+-- RPP  -> package/resource distribution
-```
+An RPP manifest/package digest identifies immutable content and MUST NOT replace the RDO ID of the corresponding File/Package object. RDO remains usable without RPP; RPP's semantic model depends on RDO. See https://github.com/FreeTAKTeam/rpp-spec.
 
-An RDO object MAY reference an RPP package or another externally verifiable resource.
+## 16. Reticulum Transport
 
-RDO MUST NOT require RPP. RPP MUST NOT be used to replace RDO object identity or semantic relationships.
+Every independently addressable Object, Property, Relationship and published Class MUST have a unique Reticulum SINGLE Destination. The Draft 0.2 shared-Twin-Identity derivation and signed-token reconstruction are defined in Section 6.
 
-## 16. Reticulum Transport Binding
+Small operations MAY use RNS packets/Links and MUST authenticate requesters where required. The owner MUST separately authorize every state-changing operation. Large byte transfers MAY use RNS Resources, without an extra fragmentation protocol.
 
-### 16.1 Required Destination type
-
-Each RDO object MUST be represented by a Reticulum `SINGLE` Object Destination using the fixed Draft 0.1 application/aspect name `rdo.object` and a distinct Object Identity.
-
-The Object Destination's hash is the RDO ID.
-
-### 16.2 Path discovery
-
-If a peer does not have a usable path to an RDO ID, it SHOULD use normal Reticulum path discovery.
-
-Path discovery, path changes, transport hops, and interface changes MUST NOT change the RDO ID.
-
-### 16.3 Identity recovery
-
-A peer SHOULD use Reticulum's normal announce/path-response identity mechanisms to obtain or recall the public Object Identity required for encrypted communication with the Object Destination.
-
-Because Draft 0.1 fixes the logical destination name to `rdo.object`, no object-specific application naming token is required in addition to the RDO ID.
-
-### 16.4 Links and requester identification
-
-State-changing operations SHOULD be carried over an authenticated Reticulum Link when the selected RNS mechanism supports the operation requirements.
-
-When the owner must authorize the requester, the requester MUST identify itself through the Reticulum authentication mechanism required by the binding or application policy.
-
-### 16.5 Requests, packets, and resources
-
-A concrete implementation MAY use Reticulum requests, packets, links, channels, or resources according to payload size and operation needs.
-
-Large state transfer or replication data SHOULD use Reticulum Resources rather than defining a second fragmentation protocol inside RDO.
-
-The exact Draft 0.1 binary operation envelope MAY be defined in a separate wire-profile document. Such a profile MUST preserve the ownership, destination, request, version, duplicate-detection, and projection rules in this specification.
+A separate compact wire profile MUST define exact request/response encoding, signed application-data layout, limits and version negotiation. This semantic specification alone does not establish interoperable wire implementations.
 
 ## 17. Security and Trust
 
-The private Object Identity is security-critical because control of it establishes control of the object's Reticulum Destination in Draft 0.1.
+An owning twin MUST securely persist its Reticulum private Identity and MUST NOT disclose it to replicas. A compromised shared Identity may jeopardize all associated Object Destinations.
 
-An owning twin MUST protect and persist Object Identity private material.
+Clients MUST verify signed announce data and the reconstructed Destination hash before authenticated operations. A valid Reticulum connection does not grant permission to mutate an object. The owner MUST enforce authorization independently.
 
-A replica MUST NOT receive private Object Identity material as part of ordinary replication.
+Owning a description establishes who may update that description, not whether it is factually true. Avoid public object inventories and unbounded object/path queries.
 
-An authenticated network path does not itself authorize every application operation. The owner MUST apply its application authorization policy after identifying the requester.
+## 18. Dafrion Example (Non-Normative)
 
-Object ownership and source trust are separate. An owner can receive untrusted or disputed evidence without relinquishing ownership, and ownership does not make an observation true by definition.
+Dafrion uses DAF as an M2 ontology over RDO M3. Twin A owns Object X, Property P1(source=X) and Relationship R1(source=X,destination=Y). Twin B owns Object Y, Property P2(source=Y) and Relationship R2(source=Y,destination=X).
 
-Implementations SHOULD minimize metadata in announces and discovery traffic, especially where object names, types, relationships, or enterprise structure are sensitive.
+P1, P2, R1 and R2 are separate RDO Objects, not embedded fields or edges. R1 and R2 may describe one real-world association but are independently owned. The epistemic layer evaluates such descriptions; RDO does not.
 
-## 18. Dafrion Binding Guidance (Non-Normative)
-
-Dafrion is a primary intended consumer of RDO, but this section is not part of the application-neutral core.
-
-### 18.1 Distributed Dafrion resources
-
-When a Dafrion resource becomes an RDO-managed distributed object, its RDO ID should become its canonical distributed identity.
-
-A Dafrion adapter can represent that destination hash as a deterministic RDF-compatible IRI form while preserving imported or historical Dafrion IRIs as external identifiers.
-
-The important rule is:
-
-```text
-one distributed object
-        =
-one canonical RDO ID
-        =
-one Reticulum Object Destination hash
-```
-
-DAF vocabulary IRIs remain unaffected.
-
-### 18.2 Dafrion ownership
-
-A Dafrion twin owns the RDO objects for which it controls the Object Identities.
-
-A second Dafrion twin can reference those objects in its local graph and can cache their state, but any operation that changes them is sent to their Object Destinations.
-
-The owner then executes the request through the same semantic validation, governance, approval, persistence, and domain rules that would govern a local operation.
-
-RDO should therefore sit below the Dafrion semantic and governance services, not bypass them.
-
-### 18.3 Example
-
-```text
-Dafrion Twin A                        Dafrion Twin B
-owns Application X                   owns Technology Y
-
-RDO X destination                    RDO Y destination
-       |                                     |
-       |---- relationship/reference ---------|
-       |                                     |
-       +-- request change to Y -------------->
-                                             |
-                                      Twin B validates
-                                      and decides
-                                             |
-       <----------- Operation Result --------+
-```
-
-Twin A never becomes an authoritative writer for Technology Y. Twin B does not need Twin A to discover an IP address, URL, server name, or Dafrion IRI for Y. The RDO ID is the Reticulum Destination used to reach it.
-
-### 18.4 Evidence and live synchronization
-
-Operational systems may submit observations to the owning Dafrion twin. The owner decides whether the observation:
-
-- becomes evidence only;
-- changes an observed operational view;
-- requires validation;
-- requires human approval;
-- changes the accepted architectural state.
-
-This keeps RDO transport and ownership simple while allowing Dafrion to implement richer evidence and digital-twin behavior above it.
+Dafrion's validation, governance, evidence and approval controls remain above RDO and MUST NOT be bypassed by remote operations.
 
 ## 19. Error Handling
 
@@ -654,74 +385,57 @@ A node SHOULD distinguish at least:
 
 ## 20. Extensibility
 
-Extensions MAY add new operation types, replication methods, semantic metadata, subscription behavior, or wire encodings.
+M2 ontologies MAY add domain-specific subclasses, property types, relationship types and authorized operations. Their versions SHOULD be identifiable.
 
-An extension MUST NOT redefine the Draft 0.1 RDO ID as something other than the Object Destination hash while claiming Draft 0.1 identity conformance.
-
-Future specifications MAY define multi-owner or transferable-ownership models, but they MUST explicitly state how they preserve or migrate canonical Reticulum object identity.
+An extension MUST NOT replace Destination hashes with another canonical RDO ID, reintroduce embedded authoritative Property/Relationship state, or grant nonowners write authority while claiming Draft 0.2 conformance. Other address profiles and consensus models require explicit future specifications.
 
 ## 21. Conformance
 
-A Draft 0.1 core implementation conforms when it:
+A core Draft 0.2 implementation MUST support the four M3 classes and their inheritance, give each addressable instance one Reticulum SINGLE Destination hash, maintain one owning twin, and model Property and Relationship as separately owned/addressed Objects.
 
-1. uses a Reticulum `SINGLE` Destination as each RDO object's canonical identity;
-2. uses the Object Destination hash as the sole RDO ID;
-3. uses the fixed Draft 0.1 destination name `rdo.object` with a distinct Object Identity per object;
-4. assigns exactly one owning twin to every object;
-5. permits only the owner to commit authoritative changes;
-6. uses Reticulum destination/path resolution rather than requiring an external owner-routing directory;
-7. treats external identifiers and application IRIs as non-routing aliases or semantic identifiers;
-8. allows foreign objects to be referenced and cached without granting write ownership;
-9. routes foreign authoritative operations to the owning Object Destination;
-10. distinguishes pending requests and projections from applied authoritative state;
-11. supports stale-request detection when a request supplies a version precondition;
-12. prevents duplicate application of the same retained state-changing request identifier;
-13. does not require multi-writer merge or distributed consensus;
-14. keeps RPP optional and separate from RDO object identity.
+It MUST support owner-authorized operations with version preconditions and retained duplicate-request protection, independent M2 ontologies, and structural checks without epistemic truth decisions. It MUST NOT require RPP or assign RDO identities to every binary chunk.
 
-## 22. Formal Invariants
+Shared-Identity binding implementations MUST demonstrate hash-only discovery with signed token retrieval, correct outbound Destination reconstruction and authorized requests interoperating with Python Reticulum before claiming wire conformance.
 
-The following invariants are normative for Draft 0.1:
+## 22. Invariants
 
-1. **One object, one RDO ID.** An RDO object has exactly one canonical RDO ID.
-2. **The RDO ID is a Reticulum Destination.** The RDO ID is the Object Destination hash, not a UUID, IRI, host address, or directory key.
-3. **One object, one owner.** Exactly one owning twin controls authoritative changes to an RDO object.
-4. **Ownership follows Object Identity control.** Ordinary replication does not transfer the private Object Identity.
-5. **Reticulum resolves the object.** RDO does not require an IRI-to-owner routing directory.
-6. **IRIs are not a second RDO identity.** Application and source IRIs may be retained but do not replace or route around the RDO ID.
-7. **Foreign replicas are not writers.** A cached foreign copy does not grant authority to change the object.
-8. **Foreign changes are requests.** A non-owner submits an operation to the owner and waits for the owner's decision.
-9. **Timeout is not rejection.** Loss of an operation response does not prove that the operation was not applied.
-10. **Projection is not state.** Simulation, planning, and hypothetical output do not alter authoritative state without owner acceptance.
-11. **No cross-owner atomicity is implied.** Operations on different owners are independently accepted or rejected.
-12. **Semantic equivalence does not merge RDO IDs.** Two RDO objects may be judged to describe the same external subject while remaining separately owned RDO objects.
-13. **RDO does not require a particular application or database.**
-14. **RDO and RPP remain separate sibling protocols.**
+1. One addressable object has one canonical RDO ID: its Reticulum Destination hash.
+2. One owning Twin Identity may control many separate Destinations.
+3. Object, Class, Property and Relationship are first-class RDO Objects; the latter three inherit Object.
+4. Property and Relationship instances are not embedded in source or endpoint Objects.
+5. A Property has source, type and value; a Relationship has source, destination and type.
+6. Different twins may author independent descriptions of the same real-world association.
+7. Only the owner may commit changes; references grant no authority to mutate endpoints.
+8. RDO validates structural/protocol correctness, never factual truth.
+9. RPP is an M2 ontology over RDO, with bulk bytes handled by Reticulum Resources.
+10. RDO identity is not an imported IRI, content digest, object version or host address.
+11. Timeout is not rejection; replay safety and stale-version detection remain required.
+12. No cross-owner atomicity or automatic ownership transfer is implied.
 
-## 23. Examples (Non-Normative)
+## 23. Example (Non-Normative)
 
-### 23.1 Foreign operation
+~~~text
+Twin A / Reticulum Identity A:
+  X  = rdo:Object
+  P1 = rdo:Property(source=X, type=Name, value="X")
+  R1 = rdo:Relationship(source=X, destination=Y, type=dependsOn)
 
-Twin A references an object whose RDO ID resolves through Reticulum to Twin B. Twin A wants to change one of the object's accepted properties. Twin A submits an Operation Request to the Object Destination. Twin B validates authorization and application rules, commits the change, and returns the resulting Object Version.
+Twin B / Reticulum Identity B:
+  Y  = rdo:Object
+  P2 = rdo:Property(source=Y, type=Status, value="active")
+  R2 = rdo:Relationship(source=Y, destination=X, type=supports)
+~~~
 
-Twin A never writes a competing authoritative copy.
+Each named instance above has its own Destination and RDO ID, even when several share a Twin Identity. No object contains a relationship. Whether R1 and R2 refer to the same association is for an epistemic assessment.
 
-### 23.2 Disconnected federation
-
-Twin A has a cached copy of an object owned by Twin B. Connectivity to Twin B is lost. Twin A may continue querying its cached copy and may prepare a pending requested change, but it cannot report that change as authoritative. When connectivity returns, the request is submitted to the object's Reticulum Destination.
-
-### 23.3 Two records for one real-world entity
-
-Twin A owns one RDO object and Twin B owns another. Later evidence suggests both describe the same physical transmitter. The application may create an explicit correlation between them. The objects retain separate RDO IDs and separate owners until an explicit future ownership or consolidation procedure says otherwise.
-
-### 23.4 Dafrion IRI mapping
-
-A legacy Dafrion resource has an imported IRI. When exposed as an RDO object, it receives an Object Destination whose hash becomes the canonical distributed RDO ID. The original IRI remains available as an external semantic identifier. Federated requests use the RDO ID, not an IRI lookup service.
+RPP File F similarly owns no embedded ContentHash Property: a separate Property instance refers to F. File bytes are supplied using RPP over an RNS Resource; their content digest is not F's RDO ID.
 
 ## 24. References
 
-- RFC 2119, "Key words for use in RFCs to Indicate Requirement Levels".
-- RFC 8174, "Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words".
-- Reticulum Network Stack documentation and protocol source: https://reticulum.network/
-- Reticulum project repository: https://github.com/markqvist/Reticulum
-- Reticulum Package Protocol: https://github.com/FreeTAKTeam/rpp-spec
+- RFC 2119 and RFC 8174
+- Reticulum Network Stack: https://reticulum.network/
+- Reticulum reference: https://github.com/markqvist/Reticulum
+- RDO ontology: ontology/rdo-core.ttl (this repository)
+- RPP M2: https://github.com/FreeTAKTeam/rpp-spec
+- RDF Schema: https://www.w3.org/TR/rdf-schema/
+
