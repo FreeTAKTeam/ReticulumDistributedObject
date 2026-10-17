@@ -105,7 +105,7 @@ The prior Draft 0.1 profile used one Identity per object with a fixed name rdo.o
 
 The bootstrap M3 is defined by ontology/rdo-core.ttl. Its stable ontology IRIs denote language terms; they are not an alternative to Destination hash identities for instantiated RDO objects.
 
-An RDF adapter MAY render the same RDO ID as rdo:<destination-hash-hex>. Imported Dafrion or Sparx instance IRIs MAY be retained as attributed external aliases and MUST NOT silently imply object equivalence or another network address.
+An RDF adapter MAY render the same RDO ID as urn:rdo:<destination-hash-hex>. Imported Dafrion or Sparx instance IRIs MAY be retained as attributed external aliases and MUST NOT silently imply object equivalence or another network address.
 
 RDF triples MAY provide a query projection, but MUST NOT replace their independently owned Property and Relationship records. Domain ontology class and predicate IRIs, including DAF vocabulary terms, may remain unchanged.
 
@@ -127,7 +127,7 @@ Each instance MUST identify a type. M2 ontologies may define subclasses and type
 
 ### 9.2 Property
 
-An rdo:Property instance MUST be a separate RDO Object with its own Destination and owner. It MUST identify source (RDO ID), property type and one typed literal or RDO Object reference as value. Description and provenance are metadata of that Property object. The source Object does not contain the Property; a local index may expose it as though attached without changing authority.
+An rdo:Property instance MUST be a separate RDO Object with its own Destination and owner. It MUST identify source (RDO ID), property type and one typed literal or RDO Object reference as value. Domain attributes such as description are independent rdo:Property objects referencing that Property as their source; only protocol metadata (including identity, type and version) is intrinsic. The source Object does not contain the Property; a local index may expose it as though attached without changing authority.
 
 ### 9.3 Relationship
 
