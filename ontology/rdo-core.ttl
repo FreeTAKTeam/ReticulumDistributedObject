@@ -1,0 +1,60 @@
+@prefix rdo:  <https://freetakteam.github.io/rdo/ontology#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# RDO M3 bootstrap ontology, Draft 0.2.
+# These IRIs name vocabulary terms, not network-routable RDO instance IDs.
+# Each independently published instance has one separate Reticulum SINGLE
+# Destination hash as canonical RDO ID.
+# RDF triples below describe/query the model; they are not replacements
+# for separately addressable Property or Relationship instances.
+
+rdo:Object a rdfs:Class ;
+    rdfs:label "Object"@en ;
+    rdfs:comment "A separately addressable, typed, owned and versioned distributed record."@en .
+
+rdo:Class a rdfs:Class ;
+    rdfs:subClassOf rdo:Object ;
+    rdfs:label "Class"@en ;
+    rdfs:comment "An addressable definition of a reusable type in an M2 ontology."@en .
+
+rdo:Property a rdfs:Class ;
+    rdfs:subClassOf rdo:Object ;
+    rdfs:label "Property"@en ;
+    rdfs:comment "A first-class owned object describing a typed value about a source Object."@en .
+
+rdo:Relationship a rdfs:Class ;
+    rdfs:subClassOf rdo:Object ;
+    rdfs:label "Relationship"@en ;
+    rdfs:comment "A first-class owned object referring to source and destination Objects."@en .
+
+# Structural references in an RDF projection of independent RDO instances.
+# These are metadata/predicates of the RDO record, not embedded Property
+# or Relationship instances. Every such instance retains its own Destination.
+
+rdo:source a rdf:Property ;
+    rdfs:domain rdo:Object ;
+    rdfs:range rdo:Object ;
+    rdfs:comment "Source RDO Object of a Property or Relationship instance."@en .
+
+rdo:destination a rdf:Property ;
+    rdfs:domain rdo:Relationship ;
+    rdfs:range rdo:Object ;
+    rdfs:comment "Destination RDO Object of a Relationship instance."@en .
+
+rdo:value a rdf:Property ;
+    rdfs:domain rdo:Property ;
+    rdfs:comment "One typed literal or RDO Object reference held by a Property instance."@en .
+
+rdo:semanticType a rdf:Property ;
+    rdfs:domain rdo:Object ;
+    rdfs:range rdo:Class ;
+    rdfs:comment "M2 class or specialized Property/Relationship type of this instance."@en .
+
+rdo:objectVersion a rdf:Property ;
+    rdfs:domain rdo:Object ;
+    rdfs:comment "Owner-issued state revision, distinct from the immutable RDO Destination identity."@en .
+
+rdo:description a rdf:Property ;
+    rdfs:domain rdo:Object ;
+    rdfs:comment "Optional human-readable description of the independent RDO record."@en .
