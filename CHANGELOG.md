@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3 - Draft - 2026-11-10
+
+- Accepted [RDO-0001](proposals/RDO-0001-selective-lxmf-replication.md): selective replication for one user's computers on different networks.
+- Added per-peer record selections and persistent local copies that remain readable while the authoring twin is offline.
+- Selected existing LXMF direct/propagated delivery and propagation nodes as the initial application's carrier; added no new propagation protocol.
+- Kept device LXMF delivery addresses separate from canonical RDO Object Destinations and preserved each record's identity, ownership and version.
+- Required complete selected record revisions, per-recipient delivery state, safe retries and application receipts after durable acceptance.
+- Distinguished local queues, propagation custody, recipient delivery and local replica acceptance; retained incomplete-delivery reporting and explicit attachment availability.
+- Preserved single-owner authoritative writes, first-class Property/Relationship records, the Draft 0.2 address binding and LXMF-independent core RDO/RPP.
+- Corrected stale operative Draft 0.1 references and the obsolete per-object private-Identity migration wording.
+
+The M3 vocabulary is unchanged. Exact replication encoding, discriminator, authentication binding, version succession and interoperability vectors remain pending; `rdo.replication.v1` is only an illustrative identifier.
+
 ## 0.2 - Draft
 
 - Recast RDO as a distributed M3 over Reticulum; added ontology/rdo-core.ttl.

@@ -3,12 +3,14 @@
 Protocol: Reticulum Distributed Objects  
 Acronym: RDO  
 Status: Draft  
-Version: 0.2-draft  
+Version: 0.3-draft\
 Transport: Reticulum Network Stack
 
 ## 1. Status of This Document
 
-Normative **Draft 0.2** supersedes the untagged Draft 0.1 design. RDO is a distributed meta-metamodel (M3) based on Reticulum SINGLE Destinations. This draft remains subject to Python/Rust address-binding and wire interoperability tests.
+Normative **Draft 0.3** adds selective, durable replication using an optional LXMF carrier to Draft 0.2. The distributed M3, shared-Twin-Identity address binding and single-owner operation model remain unchanged. The accepted decision is recorded in [RDO-0001](proposals/RDO-0001-selective-lxmf-replication.md).
+
+This draft specifies replication semantics, not a completed interoperable wire format. The shared-Identity binding and replication encoding still require Python/Rust interoperability tests. The bootstrap vocabulary in ontology/rdo-core.ttl is unchanged from Draft 0.2.
 
 Capitalized MUST, MUST NOT, SHOULD, SHOULD NOT and MAY follow RFC 2119 and RFC 8174.
 
@@ -20,7 +22,7 @@ Every addressable RDO instance has exactly one canonical identifier: its Reticul
 
 ## 3. Goals and Exclusions
 
-Draft 0.2 MUST provide:
+Draft 0.3 MUST provide:
 
 1. A minimal self-describing M3: rdo:Object, rdo:Class, rdo:Property and rdo:Relationship.
 2. Independent, first-class Property and Relationship objects with their own Destinations, types, versions and owners, not embedded authoritative attributes or edges.
@@ -30,6 +32,8 @@ Draft 0.2 MUST provide:
 6. M2 ontologies without embedding domain rules in the RDO kernel.
 7. Separation of structural validity from epistemic truth.
 8. Reticulum Resources for large bytes, without an RDO object per transfer chunk.
+
+The optional replication profile in Sections 12.4-12.6 and 16.2-16.6 adds selected-peer distribution, persistent local replicas and delayed delivery through existing LXMF propagation nodes. Core RDO conformance does not require that profile or an LXMF dependency.
 
 Out of scope: distributed consensus, multi-writer merges, CRDT authority, automatic ownership transfer, atomic cross-twin transactions, global host directories, a general OWL reasoner, mandatory RDF storage and universal evidence/confidence algorithms.
 
@@ -59,7 +63,15 @@ Out of scope: distributed consensus, multi-writer merges, CRDT authority, automa
 
 **Epistemic assessment:** An evidence-based evaluation of claims, made outside RDO.
 
-**Replica:** A non-owning cached copy of an RDO record.
+**Replica:** A non-owning copy of an RDO record. A copy selected for offline availability under the optional replication profile is persisted locally; it is not subject to ordinary transient-cache eviction.
+
+**Device peer:** An application installation with its own recipient identity and LXMF delivery Destination. Several device peers may belong to the same person.
+
+**Replication selection:** The records and content an application is authorized to send to a particular device peer. A selection may describe individual records or an application-defined set of records.
+
+**Replication receipt:** An application acknowledgement identifying the record revisions durably accepted by a recipient. It is distinct from transport delivery, propagation custody and an owner Operation Result.
+
+**Propagation node:** An LXMF service that stores encrypted messages for later delivery. Its message spool is separate from an application's local RDO replica store.
 
 **RPP digest:** A content-derived identifier of an immutable file/package revision, not an RDO ID.
 
@@ -79,7 +91,7 @@ The Destination hash is the sole canonical RDO ID. An external IRI, UUID, packag
 
 ### 6.2 Shared-Identity profile
 
-The proposed Draft 0.2 naming convention is:
+The shared-Identity naming convention introduced in Draft 0.2 and retained in Draft 0.3 is:
 
 ~~~text
 Reticulum type:  SINGLE
@@ -245,7 +257,7 @@ It MAY store a pending Operation Request locally and submit it when the owner be
 
 A twin MAY continue operating on objects it owns while disconnected from the rest of the federation. When connectivity returns, replicas can receive the owner-issued resulting state or history.
 
-This is the primary disconnected-write model for Draft 0.1.
+This is the primary disconnected-write model for Draft 0.3. The optional replication profile does not change it.
 
 ## 12. Replication and Synchronization
 
@@ -255,11 +267,11 @@ An owner MAY publish or provide object state, revisions, assertions, relationshi
 
 A replica MUST preserve the RDO ID and owner attribution of replicated data.
 
-Replication MUST NOT transfer ownership unless the private Object Identity is explicitly migrated through an administrative procedure outside normal synchronization.
+Normal replication MUST NOT transfer ownership or private Twin Identity keys. Controlled migration remains a separate administrative procedure under Section 5.
 
 ### 12.2 No multi-writer merge requirement
 
-Draft 0.1 does not require replicas to merge competing authoritative histories for the same RDO object because only one owner is permitted to create authoritative changes.
+Draft 0.3 does not require replicas to merge competing authoritative histories for the same RDO object because only one owner is permitted to create authoritative changes.
 
 Synchronization MAY still need to detect:
 
@@ -279,11 +291,39 @@ Absence from a replica MUST NOT imply non-existence.
 
 Applications performing queries over a partial replica SHOULD expose the scope or freshness limits when those limits could materially change the answer.
 
+### 12.4 Selected peers and record sets
+
+Sections 12.4-12.6 apply to implementations of the optional replication profile. The initial use case is one person using Windows, Linux and Raspberry Pi OS computers on different networks. Operating systems and user-interface choices do not change the protocol rules.
+
+An application MUST support an explicit replication selection for each recipient peer. A selection need not include the whole graph. An active selection MUST track subsequent owner-issued revisions of its selected records and retain pending delivery state for each recipient until replication is confirmed, explicitly cancelled, or reported as failed or expired.
+
+A user interface MAY select a visible node or a set of nodes. Its application mapping MUST state which independent Object, Property, Relationship and Class records are included. Selecting a node MUST NOT silently authorize copying all records reachable from it. References to unselected objects MAY remain unresolved locally and MUST NOT be treated as deleted objects.
+
+The selection MUST identify whether document bodies, attachments and additional type definitions are included. An application MUST NOT report a selected node as fully available offline until its required display/read content is retained locally. Each included record MUST preserve its own RDO ID, owner and Object Version; grouping records for delivery does not make Properties or Relationships embedded authoritative fields.
+
+Selecting a recipient or possessing a replica MUST NOT grant authority to republish records beyond their permitted recipients. Removing a record from a replication selection stops future distribution under that selection; it is not an owner-issued deletion and does not prove previously delivered copies have been erased.
+
+### 12.5 Durable local reading
+
+A recipient MUST persist accepted records selected for offline availability so that they remain readable after an application restart while the authoring twin, propagation node and network are unavailable. It MUST retain them until an explicit local removal or retention rule applies. Propagation-message expiry MUST NOT by itself remove an accepted local replica.
+
+Local reads MUST expose the retained Object Version and available freshness information. They MUST NOT require contacting the owner merely to reopen already validated content, and MUST NOT present an offline copy as proof of the owner's current state. Missing records, excluded content and unavailable attachments MUST remain distinguishable from known absence.
+
+A replica store and an LXMF propagation spool have separate lifetimes. A device MAY host both, but accepting a delivery into the spool does not make that knowledge a readable local replica.
+
+### 12.6 Ownership across one user's devices
+
+Device peers belonging to one person remain separate protocol participants. They MUST use distinct recipient identities for per-device delivery and completion tracking. Normal replication MUST NOT copy the owner's private Twin Identity keys, transfer ownership or cause a replica to announce itself as the owner's canonical Object Destination.
+
+Each twin MAY create and modify objects it owns. A proposed edit to a foreign object remains subject to Sections 10 and 11.2, including when both twins belong to the same user. Independent authoritative editing of the same record on several devices is outside this profile.
+
 ## 13. Federation
 
 ### 13.1 Destination-based federation
 
 Federation occurs by referencing RDO IDs and communicating with their Reticulum Destinations.
+
+An optional replica-delivery carrier may address a peer inbox as specified in Section 16.2. That delivery address does not replace an object's canonical Destination or the resolution and owner-operation rules.
 
 The canonical flow is:
 
@@ -304,7 +344,7 @@ A deployment MAY maintain application indexes for search or discovery, but those
 
 ### 13.2 No owner directory requirement
 
-A conforming Draft 0.1 implementation MUST NOT require a global object-owner directory for normal object addressing.
+A conforming Draft 0.3 implementation MUST NOT require a global object-owner directory for normal object addressing.
 
 The Reticulum Destination is itself the federation address.
 
@@ -318,7 +358,7 @@ An operation that can change authoritative state MUST be submitted to the Object
 
 ### 13.4 Cross-owner operations
 
-An application workflow MAY require changes to objects with different owners. Draft 0.1 treats each owner operation independently.
+An application workflow MAY require changes to objects with different owners. Draft 0.3 treats each owner operation independently.
 
 The protocol does not provide an atomic commit across several Object Destinations. Applications requiring such a workflow MUST coordinate the requests at the application layer and handle partial acceptance explicitly.
 
@@ -342,13 +382,80 @@ RPP control operations use RDO object Destinations and owner authorization. Its 
 
 An RPP manifest/package digest identifies immutable content and MUST NOT replace the RDO ID of the corresponding File/Package object. RDO remains usable without RPP; RPP's semantic model depends on RDO. See https://github.com/FreeTAKTeam/rpp-spec.
 
+The optional LXMF replication profile MUST NOT make RPP depend on LXMF or replace RPP's Reticulum Resource-based binary transfer. A reference to a file or package is not a locally available copy of its bytes. Applications promising offline access to an attachment MUST arrange its retained delivery and verify availability independently of receiving the reference.
+
 ## 16. Reticulum Transport
+
+### 16.1 Object addressing and operations
 
 Every independently addressable Object, Property, Relationship and published Class MUST have a unique Reticulum SINGLE Destination. The Draft 0.2 shared-Twin-Identity derivation and signed-token reconstruction are defined in Section 6.
 
 Small operations MAY use RNS packets/Links and MUST authenticate requesters where required. The owner MUST separately authorize every state-changing operation. Large byte transfers MAY use RNS Resources, without an extra fragmentation protocol.
 
 A separate compact wire profile MUST define exact request/response encoding, signed application-data layout, limits and version negotiation. This semantic specification alone does not establish interoperable wire implementations.
+
+### 16.2 Optional replica delivery over LXMF
+
+The selected carrier for the initial replication application is LXMF. Implementations of this profile MUST reuse LXMF direct/propagated delivery and existing LXMF propagation nodes. This profile defines no new propagation network or relay protocol. Core RDO remains usable without LXMF.
+
+A replication message is addressed to the receiving device's LXMF delivery Destination. The payload contains records identified by their existing RDO Destination hashes. An LXMF delivery Destination, message ID, transfer identifier or replication receipt MUST NOT replace a record's RDO ID.
+
+The sender MUST maintain a separate delivery outcome for each selected peer. It MAY use direct delivery when a peer is reachable and propagated delivery when the peer is offline. An application relying on delayed delivery MUST configure an available propagation node and support retrieval of waiting messages. Sharing a human owner or a propagation node does not imply delivery to every device.
+
+Authoritative mutations continue to use the Object Destination and owner authorization rules in Sections 6 and 10. Receiving a replication envelope only installs non-owning copies; it MUST NOT be treated as an instruction to mutate an authoritative object. Peer lists and replica indexes do not replace Reticulum destination-native resolution.
+
+### 16.3 Snapshot contents and authority
+
+Initial replication uses complete revisions of the selected records. A snapshot MUST carry the state needed to read those records offline, rather than only an object ID or a change notification requiring a later fetch from the owner. Implementations MAY batch independent records while preserving their separate identities, versions and owners. Delta encoding is not required by this profile.
+
+The replication binding MUST represent, for each record:
+
+- its canonical RDO ID, owner and Object Version;
+- its type and complete record state, including the structural source/value or source/destination references for Property and Relationship records;
+- sufficient verifiable origin and identity-binding information to validate that state without an online owner, either in the delivery or already retained by the recipient.
+
+A recipient MUST check an incoming transfer against its configured sharing policy and validate the original owner's authority for every accepted record. A forwarding peer's signature alone is insufficient when that peer does not own the record. An authenticated LXMF origin may supply owner evidence only when the binding verifies that origin as the record's owner. A forwarding implementation MUST preserve the evidence required by that binding; a relay MUST NOT acquire ownership by carrying the bytes.
+
+A snapshot MUST NOT convert independently owned Properties or Relationships into authoritative fields of another record. Packaging several records together does not establish an atomic snapshot across owners or a complete graph. If a deletion is distributed, it MUST be an explicit owner-authorized record; omission from a snapshot or selection is not deletion.
+
+### 16.4 Persistent delivery and receipts
+
+The sender MUST retain pending replication intent per recipient across application restarts and retain enough source data to retry safely. Delivery expiry, unavailable storage or exhausted retries MUST remain visible as incomplete replication. Handing data to a propagation node MUST NOT alone mark a peer's replica as complete.
+
+An implementation MUST distinguish these milestones; the names below describe semantics and do not assign wire status codes:
+
+| Milestone | Meaning |
+| --- | --- |
+| Queued locally | The sender has persisted the intended delivery. |
+| Stored by propagation node | An intermediary has accepted custody of the message. |
+| Received by destination | The recipient has obtained the message. |
+| Stored as replica | The recipient has validated and durably committed the identified record revisions. |
+
+A recipient MUST issue a successful replication receipt only after durable local acceptance. The receipt MUST identify its recipient and accepted record IDs and versions, with a correlation to the transfer being acknowledged. The sender MUST authenticate the receipt's origin. Transport receipts and local daemon custody acknowledgements MUST NOT be interpreted as successful graph application.
+
+Receipt delivery MUST support LXMF propagation while the original sender is offline. Pending receipt intent, or durable acceptance data sufficient to reissue the same acknowledgement, MUST survive recipient restart. Local reading of accepted records MUST NOT wait for delivery of that receipt back to the sender. Receipt messages MUST NOT themselves require replication receipts.
+
+A replication receipt MUST remain distinct from the `APPLIED` Operation Result in Section 10. Receiving state is not a new owner-authorized mutation. Per-record acceptance MUST NOT imply atomic acceptance of every record in a batch or synchronized versions across different owners.
+
+The receiver MUST retain enough acceptance state to recognize retries after restart and reissue a receipt for records already accepted. Duplicate delivery of the same record revision MUST NOT create duplicate objects or relationships. Reusing an RDO ID and version for different authenticated state MUST be rejected as inconsistent.
+
+Object Versions remain owner-issued markers. Arrival order, timestamps and lexical or numeric comparison of an unspecified marker MUST NOT be used to silently replace a known newer record. The wire binding MUST define how successor versions are established. If their order cannot be established, the recipient MUST preserve its accepted state and report or retain the uncertain revision separately.
+
+### 16.5 Offline recipients and storage limits
+
+A recipient MAY retrieve and accept a propagated snapshot after its authoring computer has gone offline. This requires that another available node already retained the payload and that the recipient retrieves it before the intermediary discards it. If no intermediary is available, the sender MUST retain its queue until contact is possible or delivery is explicitly ended as incomplete.
+
+Propagation custody is bounded by node retention, capacity and delivery policies. Applications MUST NOT rely on a propagation spool as permanent knowledge storage. They MUST account for expiry and payload limits, preserve delivery intent or report failure, and reconcile missing revisions when communication resumes. A copied reference or an update notification cannot substitute for retained content when the owner is offline.
+
+Large attachments and transfer fragments remain subject to the chosen content-transfer mechanism and its limits. This profile does not introduce a second fragmentation protocol or assign RDO identities to transport chunks.
+
+### 16.6 Wire binding still to be specified
+
+LXMF provides custom application fields, including `FIELD_CUSTOM_TYPE` and `FIELD_CUSTOM_DATA`. They are the intended extension mechanism for this application. The name `rdo.replication.v1` is illustrative and is not yet an assigned or interoperable wire identifier.
+
+Before claiming wire interoperability, a binding MUST specify field assignments and discriminator negotiation, record and receipt encoding, signature coverage and identity-binding verification, version succession, deletion representation, batching and payload limits, and error handling. It MUST include verified vectors and the delayed-delivery acceptance scenario in RDO-0001. These details have not been fixed by the architectural decision in this draft.
+
+Implementation note (non-normative): the initial Rust application can reuse the existing LXMF-rs application-payload and propagation APIs. Its persistence and custody options need to be enabled and verified for the claimed guarantees. SDK support alone does not establish RDO replication conformance.
 
 ## 17. Security and Trust
 
@@ -387,15 +494,17 @@ A node SHOULD distinguish at least:
 
 M2 ontologies MAY add domain-specific subclasses, property types, relationship types and authorized operations. Their versions SHOULD be identifiable.
 
-An extension MUST NOT replace Destination hashes with another canonical RDO ID, reintroduce embedded authoritative Property/Relationship state, or grant nonowners write authority while claiming Draft 0.2 conformance. Other address profiles and consensus models require explicit future specifications.
+An extension MUST NOT replace Destination hashes with another canonical RDO ID, reintroduce embedded authoritative Property/Relationship state, or grant nonowners write authority while claiming Draft 0.3 conformance. Other address profiles and consensus models require explicit future specifications.
 
 ## 21. Conformance
 
-A core Draft 0.2 implementation MUST support the four M3 classes and their inheritance, give each addressable instance one Reticulum SINGLE Destination hash, maintain one owning twin, and model Property and Relationship as separately owned/addressed Objects.
+A core Draft 0.3 implementation MUST support the four M3 classes and their inheritance, give each addressable instance one Reticulum SINGLE Destination hash, maintain one owning twin, and model Property and Relationship as separately owned/addressed Objects.
 
 It MUST support owner-authorized operations with version preconditions and retained duplicate-request protection, independent M2 ontologies, and structural checks without epistemic truth decisions. It MUST NOT require RPP or assign RDO identities to every binary chunk.
 
 Shared-Identity binding implementations MUST demonstrate hash-only discovery with signed token retrieval, correct outbound Destination reconstruction and authorized requests interoperating with Python Reticulum before claiming wire conformance.
+
+Core conformance MUST NOT require LXMF. An implementation claiming the optional replication profile MUST also satisfy Sections 12.4-12.6 and 16.2-16.6, including selected-peer scope, durable offline reading, preserved owner authority, restart-safe delivery state and application receipts. A semantic-profile implementation MUST NOT claim an interoperable wire protocol until the binding and tests required by Section 16.6 exist.
 
 ## 22. Invariants
 
@@ -411,6 +520,10 @@ Shared-Identity binding implementations MUST demonstrate hash-only discovery wit
 10. RDO identity is not an imported IRI, content digest, object version or host address.
 11. Timeout is not rejection; replay safety and stale-version detection remain required.
 12. No cross-owner atomicity or automatic ownership transfer is implied.
+13. Optional replication sends selected owner-issued records to distinct device peers; receiving them grants no write authority.
+14. A peer's LXMF inbox and an RDO Object Destination have different roles and are not interchangeable identifiers.
+15. Propagation custody, destination delivery and durable local replica acceptance are distinct events.
+16. Core RDO and RPP remain usable without LXMF.
 
 ## 23. Example (Non-Normative)
 
@@ -438,4 +551,10 @@ RPP File F similarly owns no embedded ContentHash Property: a separate Property 
 - RDO ontology: ontology/rdo-core.ttl (this repository)
 - RPP M2: https://github.com/FreeTAKTeam/rpp-spec
 - RDF Schema: https://www.w3.org/TR/rdf-schema/
+- Accepted selective replication decision: [RDO-0001](proposals/RDO-0001-selective-lxmf-replication.md)
+- LXMF message fields and propagation: https://github.com/markqvist/LXMF
+- LXMF custom application field definitions: https://github.com/markqvist/LXMF/blob/master/LXMF/LXMF.py
+- LXMF-rs application custody: https://github.com/FreeTAKTeam/LXMF-rs/blob/main/docs/migrations/propagation-application-kind.md
+- LXMF-rs delivery choices: https://github.com/FreeTAKTeam/LXMF-rs/blob/main/docs/sdk/quickstart.md
+- LXMF-rs durable custody and receipt semantics: https://github.com/FreeTAKTeam/LXMF-rs/blob/main/docs/sdk/README.md and https://github.com/FreeTAKTeam/LXMF-rs/blob/main/docs/sdk/delivery-states.md
 
