@@ -16,6 +16,8 @@ Read the [normative specification](SPECIFICATION.md) and the [Turtle M3 vocabula
 
 The [reference implementation design](reference_Implementation.md) records the Rust application's UI style, REM-inspired peer selection and division of responsibilities.
 
+The [Codex UI comparison prompt](prompts/ui-comparison-codex.md) defines an experiment in this repository comparing Rune, egui/eframe and the reused Dafrion Electron/React impact view.
+
 [RPP](https://github.com/FreeTAKTeam/rpp-spec) is an M2 package/file ontology defined on top of RDO, with a Reticulum Resource-based binary transfer mechanism. RDO itself does not depend on RPP.
 
 ## Selective replication
