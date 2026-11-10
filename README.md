@@ -14,6 +14,8 @@ RDO defines a small distributed ontology over the Reticulum Network Stack. Its f
 
 Read the [normative specification](SPECIFICATION.md) and the [Turtle M3 vocabulary](ontology/rdo-core.ttl).
 
+The [reference implementation design](reference_Implementation.md) records the Rust application's UI style, REM-inspired peer selection and division of responsibilities.
+
 [RPP](https://github.com/FreeTAKTeam/rpp-spec) is an M2 package/file ontology defined on top of RDO, with a Reticulum Resource-based binary transfer mechanism. RDO itself does not depend on RPP.
 
 ## Selective replication
