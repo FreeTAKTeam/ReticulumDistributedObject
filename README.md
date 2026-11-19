@@ -30,6 +30,6 @@ Successful replication requires an application receipt after durable local accep
 
 Core RDO and RPP remain usable without LXMF. The bootstrap ontology is unchanged from Draft 0.2. Read [RDO-0001](proposals/RDO-0001-selective-lxmf-replication.md) for the accepted decision and the three-computer acceptance scenario.
 
-This repository defines the draft specification and vocabulary. Exact operation and replication encodings, the replication wire identifier, signature and version-succession rules, and shared-Identity interoperability tests remain open. Draft 0.3 records the semantic contract; it does not claim a tested replication implementation.
+Implementers can review the [v1 owner binding and qualification procedure](profiles/owner-v1.md) and [signed address, revision and operation vectors](vectors/owner-v1.json). Live hash-only discovery and owner operations between Python and Rust are an open acceptance gate. The optional replication wire identifier and encoding remain a separate specification item.
 
 See [proposals/](proposals/) for the proposal process.

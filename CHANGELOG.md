@@ -1,5 +1,9 @@
 # Changelog
 
+## Owner binding v1 — design candidate
+
+- Specified signed token recovery, owner operations, replay handling and immutable revision succession for the core binding. Published [offline vectors](vectors/owner-v1.json) and the [Python/Rust network acceptance procedure](profiles/owner-v1.md).
+
 ## 0.3 - Draft - 2026-11-10
 
 - Accepted [RDO-0001](proposals/RDO-0001-selective-lxmf-replication.md): selective replication for one user's computers on different networks.
