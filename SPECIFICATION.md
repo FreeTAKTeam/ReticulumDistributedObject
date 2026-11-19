@@ -392,7 +392,7 @@ Every independently addressable Object, Property, Relationship and published Cla
 
 Small operations MAY use RNS packets/Links and MUST authenticate requesters where required. The owner MUST separately authorize every state-changing operation. Large byte transfers MAY use RNS Resources, without an extra fragmentation protocol.
 
-A separate compact wire profile MUST define exact request/response encoding, signed application-data layout, limits and version negotiation. This semantic specification alone does not establish interoperable wire implementations.
+The [shared-Identity owner binding v1](profiles/owner-v1.md) is the candidate compact profile for core owner operations. It fixes signed announce app data, request/result encoding, immutable revision succession, limits and version handling. Its [offline vectors](vectors/owner-v1.json) and two-direction network qualification procedure implement the distinction in §6.4.
 
 ### 16.2 Optional replica delivery over LXMF
 
